@@ -1,5 +1,35 @@
-import { list } from "postcss";
+/**
+ * Class that holds data about a MTGA set of cards.
+ */
+export class MTGASet {
+    constructor(name) {
+        this.name = name
+        this.user = {
+            common : 0,
+            uncommon : 0,
+            rare : 0,
+            mythic : 0
+        }
+        this.total = {
+            common : 0,
+            uncommon : 0,
+            rare : 0,
+            mythic : 0
+        }
+    }
 
+    addRarity(rarity, amount) {
+        this.user[rarity] += amount;
+        this.total[rarity] += 4;
+    }
+}
+
+/**
+ * Searches the specified log text for a match and returns the JSON object match.
+ * @param {String} logtext - The log text to parse
+ * @param {String} logSpecifier -The class/function name syntax to search for (ex. "PlayerInventory.GetPlayerCardsV3")
+ * @returns {Object} The JSON object that is the result of the match.
+ */
 export function parseLog (logtext, logSpecifier){
     // const LOG_LINE_PATTERN = /\[UnityCrossThreadLogger\](.*)\n([<=]=[=>]) (.*)\(.*\)\s*({\n(?:\s+.*,?\n)*})/g; // window
 
@@ -12,7 +42,7 @@ export function parseLog (logtext, logSpecifier){
     do {    
         match = LOG_LINE_PATTERN.exec(logtext);
         if(match) {
-            console.log("Got match");
+            //console.log("Got match");
             if(match[3] === logSpecifier) {
                 data = JSON.parse(match[4]);
             } 
@@ -21,7 +51,10 @@ export function parseLog (logtext, logSpecifier){
 
     return data;
 }
-
+/**
+ * Generates the default path of the MTGA log file.
+ * @returns the user's MTGA log path
+ */
 export function defaultLogUri() {
     if (process.platform !== "win32") {
       return (
@@ -36,49 +69,29 @@ export function defaultLogUri() {
       "LocalLow\\Wizards Of The Coast\\MTGA\\output_log.txt"
     );
 }
+/**
+ * Calculates the amount and total possible amount of common, uncommon, rare, and mythic rares that the user has for all the sets available.
+ * @param {Array<Object>} userCards - This is the JSON object containing a property with the mtga card key and the value with the number of cards
+ * @param {Object} dbCards - This is a array of JSON objects containing all the card data pulled from scryfall.
+ * @returns {Object} An object of MTGASet objects
+ */
+export function calculateSetTotals (userCards, dbCards) {
 
-export function calcPayouts (userCards, dbCards) {
-
-    let listOfSets = {};
-    
-    for(let i in dbCards) {
-        if(!listOfSets[dbCards[i].set_name]) {
-            let set = { name: dbCards[i].set_name, user_common: 0, total_common:0, user_uncommon:0, total_uncommon: 0, user_rare: 0, total_rare: 0, user_mythic: 0, total_mythic_rare: 0}
-            listOfSets[dbCards[i].set_name] = set;
+    let sets = {};
+    dbCards.forEach(dbCard => {
+        //If there is no set for this card, create it
+        if(!sets[dbCard.set_name]) {
+            let set = new MTGASet(dbCard.set_name);
+            sets[dbCard.set_name] = set;
         }
-        let current_set = listOfSets[dbCards[i].set_name]
-        if(userCards[dbCards[i].arena_id]) {
-            console.log(userCards[dbCards[i].arena_id])
-            setCards(current_set, dbCards[i].rarity, dbCards[i].arena_id, userCards[dbCards[i].arena_id]);
+        //Get the set of the current card
+        let current_set = sets[dbCard.set_name]
+        //Add how many cards the user has to the set object, or zero if they don't have any
+        if(userCards[dbCard.arena_id]) {
+            current_set.addRarity(dbCard.rarity, userCards[dbCard.arena_id]);
         } else {
-            setCards(current_set, dbCards[i].rarity, dbCards[i].arena_id, 0);
+            current_set.addRarity(dbCard.rarity, 0);
         }
-
-    }
-    console.log(listOfSets);
-
-}
-
-function setCards(set, rarity, arena_id, amount) {
-    switch (rarity) {
-        case 'common':
-        set.user_common += amount;
-        set.total_common += 4;
-        break;
-        case 'uncommon':
-        set.user_uncommon += amount;
-        set.total_uncommon += 4;
-        break;
-        case 'rare':
-        set.user_rare += amount;
-        set.total_rare += 4;
-        break;
-        case 'mythic':
-        set.user_mythic += amount;
-        set.total_mythic_rare += 4;
-        break;
-        default:
-        // code block
-        break;
-    }
+    });
+    return sets;
 }

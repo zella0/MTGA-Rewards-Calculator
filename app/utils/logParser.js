@@ -2,26 +2,26 @@
  * Class that holds data about a MTGA set of cards.
  */
 export class MTGASet {
-    constructor(name) {
-        this.name = name
-        this.user = {
-            common : 0,
-            uncommon : 0,
-            rare : 0,
-            mythic : 0
-        }
-        this.total = {
-            common : 0,
-            uncommon : 0,
-            rare : 0,
-            mythic : 0
-        }
+  constructor(name) {
+    this.name = name
+    this.user = {
+      common: 0,
+      uncommon: 0,
+      rare: 0,
+      mythic: 0
     }
+    this.total = {
+      common: 0,
+      uncommon: 0,
+      rare: 0,
+      mythic: 0
+    }
+  }
 
-    addRarity(rarity, amount) {
-        this.user[rarity] += amount;
-        this.total[rarity] += 4;
-    }
+  addRarity(rarity, amount) {
+    this.user[rarity] += amount;
+    this.total[rarity] += 4;
+  }
 }
 
 /**
@@ -30,44 +30,45 @@ export class MTGASet {
  * @param {String} logSpecifier -The class/function name syntax to search for (ex. "PlayerInventory.GetPlayerCardsV3")
  * @returns {Object} The JSON object that is the result of the match.
  */
-export function parseLog (logtext, logSpecifier){
-    // const LOG_LINE_PATTERN = /\[UnityCrossThreadLogger\](.*)\n([<=]=[=>]) (.*)\(.*\)\s*({\n(?:\s+.*,?\n)*})/g; // window
+export function parseLog(logtext, logSpecifier) {
+  // const LOG_LINE_PATTERN = /\[UnityCrossThreadLogger\](.*)\n([<=]=[=>]) (.*)\(.*\)\s*({\n(?:\s+.*,?\n)*})/g; // window
 
-    const LOG_LINE_PATTERN = /\[UnityCrossThreadLogger\](.*)\r\n([<=]=[=>]) (.*)\(.*\)\s*({\r\n(?:\s+.*,?\r\n)*})/g; // mac
+  const LOG_LINE_PATTERN = /\[UnityCrossThreadLogger\](.*)\r\n([<=]=[=>]) (.*)\(.*\)\s*({\r\n(?:\s+.*,?\r\n)*})/g; // mac
 
-    let data;
+  let data;
 
-    //rewards data
-    let match;
-    do {    
-        match = LOG_LINE_PATTERN.exec(logtext);
-        if(match) {
-            //console.log("Got match");
-            if(match[3] === logSpecifier) {
-                data = JSON.parse(match[4]);
-            } 
-        }
-    } while(match)
+  //rewards data
+  let match;
+  do {
+    match = LOG_LINE_PATTERN.exec(logtext);
+    if (match) {
+      //console.log("Got match");
+      if (match[3] === logSpecifier) {
+        data = JSON.parse(match[4]);
+      }
+    }
+  } while (match)
 
-    return data;
+  return data;
 }
 /**
  * Generates the default path of the MTGA log file.
  * @returns the user's MTGA log path
  */
 export function defaultLogUri() {
-    if (process.platform !== "win32") {
-      return (
-        process.env.HOME +
-        "/.wine/drive_c/user/" +
-        process.env.USER +
-        "/AppData/LocalLow/Wizards of the Coast/MTGA/output_log.txt"
-      );
-    }
-    return process.env.APPDATA.replace(
-      "Roaming",
-      "LocalLow\\Wizards Of The Coast\\MTGA\\output_log.txt"
+
+  if (process.platform !== "win32") {
+    return (
+      process.env.HOME +
+      "/.wine/drive_c/user/" +
+      process.env.USER +
+      "/AppData/LocalLow/Wizards of the Coast/MTGA/output_log.txt"
     );
+  }
+  return process.env.APPDATA.replace(
+    "Roaming",
+    "LocalLow\\Wizards Of The Coast\\MTGA\\output_log.txt"
+  );
 }
 /**
  * Calculates the amount and total possible amount of common, uncommon, rare, and mythic rares that the user has for all the sets available.
@@ -75,23 +76,23 @@ export function defaultLogUri() {
  * @param {Object} dbCards - This is a array of JSON objects containing all the card data pulled from scryfall.
  * @returns {Object} An object of MTGASet objects
  */
-export function calculateSetTotals (userCards, dbCards) {
+export function calculateSetTotals(userCards, dbCards) {
 
-    let sets = {};
-    dbCards.forEach(dbCard => {
-        //If there is no set for this card, create it
-        if(!sets[dbCard.set_name]) {
-            let set = new MTGASet(dbCard.set_name);
-            sets[dbCard.set_name] = set;
-        }
-        //Get the set of the current card
-        let current_set = sets[dbCard.set_name]
-        //Add how many cards the user has to the set object, or zero if they don't have any
-        if(userCards[dbCard.arena_id]) {
-            current_set.addRarity(dbCard.rarity, userCards[dbCard.arena_id]);
-        } else {
-            current_set.addRarity(dbCard.rarity, 0);
-        }
-    });
-    return sets;
+  const sets = {};
+  dbCards.forEach(dbCard => {
+    // If there is no set for this card, create it
+    if (!sets[dbCard.set_name]) {
+      const set = new MTGASet(dbCard.set_name);
+      sets[dbCard.set_name] = set;
+    }
+    // Get the set of the current card
+    const currentSet = sets[dbCard.set_name]
+    // Add how many cards the user has to the set object, or zero if they don't have any
+    if (userCards[dbCard.arena_id]) {
+      currentSet.addRarity(dbCard.rarity, userCards[dbCard.arena_id]);
+    } else {
+      currentSet.addRarity(dbCard.rarity, 0);
+    }
+  });
+  return sets;
 }
